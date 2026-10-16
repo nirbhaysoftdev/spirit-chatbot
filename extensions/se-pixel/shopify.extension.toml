@@ -1,0 +1,27 @@
+# Storefront behaviour tracking for the assistant's brain (views, searches, cart, checkout).
+# Installed with the app but INACTIVE until a person switches tracking on in the app's home page
+# (that calls webPixelCreate). Shopify only loads it for visitors who allow analytics cookies.
+type = "web_pixel_extension"
+name = "se-pixel"
+runtime_context = "strict"
+
+[customer_privacy]
+analytics = true
+marketing = false
+preferences = false
+sale_of_data = "disabled"
+
+[settings]
+type = "object"
+
+[settings.fields.endpoint]
+name = "Ingest endpoint"
+description = "URL the pixel posts events to (set automatically by the app)"
+type = "single_line_text_field"
+validations = [ { name = "min", value = "1" } ]
+
+[settings.fields.shop]
+name = "Shop domain"
+description = "myshopify.com domain (set automatically by the app)"
+type = "single_line_text_field"
+validations = [ { name = "min", value = "1" } ]

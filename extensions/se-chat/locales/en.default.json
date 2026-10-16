@@ -1,0 +1,27 @@
+{
+  "chat": {
+    "launcher": "Ask our whisky expert",
+    "title": "Whisky assistant",
+    "close": "Close",
+    "back": "Back",
+    "greeting": "How can I help you today?",
+    "preview_note": "Preview: the assistant is being built. Buttons show the layout only.",
+    "input_placeholder": "Type any question…",
+    "ai_notice": "You are chatting with an AI assistant. Please drink responsibly.",
+    "home_track": "Track my order",
+    "home_explore": "Explore Liquor",
+    "home_gift": "Find a gift",
+    "home_rare": "Rare and Old",
+    "home_club": "Tasting club and subscriptions",
+    "home_human": "Talk to a person",
+    "explore_hint": "Tap a shortcut or ask in your own words",
+    "chip_deals": "Best deals this week",
+    "chip_for_me": "Best for me",
+    "chip_taste": "Matches my taste",
+    "chip_rare": "Rarest of rare",
+    "chip_trending": "Trending now",
+    "chip_demanded": "Most demanded",
+    "chip_searched": "Most searched",
+    "chip_new": "New arrivals"
+  }
+}

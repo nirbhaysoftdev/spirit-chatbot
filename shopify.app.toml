@@ -1,0 +1,50 @@
+# The Spirits Embassy — AI Shopping Assistant
+# Private (custom) app for thespiritsembassy.com only. Not listed on the App Store.
+# Run `shopify app config link` once to fill in client_id for the app created in the Dev Dashboard.
+client_id = ""
+name = "Spirits Embassy Assistant"
+embedded = true
+
+[access_scopes]
+# READ-ONLY on all store data while we build. The app cannot change products, prices,
+# orders or customers. write_pixels only registers our own tracking pixel (kept OFF until approved).
+# Orders older than 60 days need read_all_orders, which Shopify must approve: request it in the
+# Dev Dashboard, then add it here.
+scopes = "read_products,read_inventory,read_orders,read_customers,read_locales,read_markets,read_content,read_customer_events,write_pixels"
+
+[webhooks]
+api_version = "2026-10"
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/uninstalled"
+  topics = ["app/uninstalled"]
+
+  [[webhooks.subscriptions]]
+  topics = ["app/scopes_update"]
+  uri = "/webhooks/app/scopes_update"
+
+  # 24/7 sync: every change in the store lands here. Handled by app/routes/webhooks.sync.tsx
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/sync"
+  topics = [
+    "products/create",
+    "products/update",
+    "products/delete",
+    "inventory_levels/update",
+    "collections/create",
+    "collections/update",
+    "collections/delete",
+    "customers/create",
+    "customers/update",
+    "customers/delete",
+    "orders/create",
+    "orders/updated",
+    "orders/cancelled",
+    "refunds/create",
+    "bulk_operations/finish",
+  ]
+
+  # Privacy (UK GDPR / EU GDPR). Kept even though this is a private app.
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/privacy"
+  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]

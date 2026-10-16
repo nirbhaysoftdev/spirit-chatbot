@@ -1,0 +1,5 @@
+# The storefront chat panel, delivered as a theme app embed.
+# App embeds are OFF by default and switched on per theme, so enabling it only in an
+# unpublished copy of the live theme keeps it hidden from shoppers while we test.
+name = "se-chat"
+type = "theme"

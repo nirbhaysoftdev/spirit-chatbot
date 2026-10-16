@@ -1,0 +1,95 @@
+{%- comment -%}
+  Spirits Embassy chat assistant: launcher button + full-height side panel.
+  Enable it in Online Store > Themes > (unpublished copy) > Customize > App embeds.
+{%- endcomment -%}
+
+<div
+  id="se-chat-root"
+  data-shop="{{ shop.permanent_domain }}"
+  data-customer="{% if customer %}{{ customer.id }}{% endif %}"
+  data-country="{{ localization.country.iso_code }}"
+  data-currency="{{ cart.currency.iso_code }}"
+  style="--se-accent: {{ block.settings.accent }}; --se-accent-ink: {{ block.settings.accent_ink }};"
+>
+  <button type="button" class="se-launcher" aria-haspopup="dialog" aria-controls="se-chat-panel" aria-expanded="false">
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2Z"/></svg>
+    <span>{% if block.settings.launcher_label != blank %}{{ block.settings.launcher_label | escape }}{% else %}{{ 'chat.launcher' | t }}{% endif %}</span>
+  </button>
+
+  <aside id="se-chat-panel" class="se-panel" role="dialog" aria-modal="false" aria-labelledby="se-chat-title" hidden>
+    <header class="se-head">
+      <button type="button" class="se-back" data-se-back hidden aria-label="{{ 'chat.back' | t }}">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.4 5.4 14 4l-8 8 8 8 1.4-1.4L8.8 12z"/></svg>
+      </button>
+      <h2 id="se-chat-title" class="se-title" data-se-title>{{ 'chat.title' | t }}</h2>
+      <button type="button" class="se-close" data-se-close aria-label="{{ 'chat.close' | t }}">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7l1.4-1.4 6.3 6.3 6.3-6.3z"/></svg>
+      </button>
+    </header>
+
+    <div class="se-body">
+      <p class="se-note">{{ 'chat.preview_note' | t }}</p>
+
+      <section class="se-view" data-se-view="home">
+        <p class="se-lead">{{ 'chat.greeting' | t }}</p>
+        <ul class="se-menu" role="list">
+          <li><button type="button" class="se-tile" data-se-go="track" data-se-key="track_order">{{ 'chat.home_track' | t }}</button></li>
+          <li><button type="button" class="se-tile" data-se-go="explore" data-se-key="explore">{{ 'chat.home_explore' | t }}</button></li>
+          <li><button type="button" class="se-tile" data-se-go="placeholder" data-se-key="gift">{{ 'chat.home_gift' | t }}</button></li>
+          <li><button type="button" class="se-tile" data-se-go="placeholder" data-se-key="rare_old">{{ 'chat.home_rare' | t }}</button></li>
+          <li><button type="button" class="se-tile" data-se-go="placeholder" data-se-key="club">{{ 'chat.home_club' | t }}</button></li>
+          <li><button type="button" class="se-tile" data-se-go="placeholder" data-se-key="human">{{ 'chat.home_human' | t }}</button></li>
+        </ul>
+      </section>
+
+      <section class="se-view" data-se-view="explore" hidden>
+        <p class="se-lead">{{ 'chat.explore_hint' | t }}</p>
+        <div class="se-chips" role="list">
+          <button type="button" class="se-chip" role="listitem" data-se-key="best_deals">{{ 'chat.chip_deals' | t }}</button>
+          <button type="button" class="se-chip" role="listitem" data-se-key="best_for_me">{{ 'chat.chip_for_me' | t }}</button>
+          <button type="button" class="se-chip" role="listitem" data-se-key="matches_taste">{{ 'chat.chip_taste' | t }}</button>
+          <button type="button" class="se-chip" role="listitem" data-se-key="rarest">{{ 'chat.chip_rare' | t }}</button>
+          <button type="button" class="se-chip" role="listitem" data-se-key="trending">{{ 'chat.chip_trending' | t }}</button>
+          <button type="button" class="se-chip" role="listitem" data-se-key="most_demanded">{{ 'chat.chip_demanded' | t }}</button>
+          <button type="button" class="se-chip" role="listitem" data-se-key="most_searched">{{ 'chat.chip_searched' | t }}</button>
+          <button type="button" class="se-chip" role="listitem" data-se-key="new_arrivals">{{ 'chat.chip_new' | t }}</button>
+        </div>
+        <div class="se-results" data-se-results aria-live="polite"></div>
+      </section>
+
+      <section class="se-view" data-se-view="track" hidden>
+        <p class="se-lead">{{ 'chat.home_track' | t }}</p>
+        <div class="se-results" aria-live="polite"><p class="se-muted">Order tracking connects in the next build step.</p></div>
+      </section>
+
+      <section class="se-view" data-se-view="placeholder" hidden>
+        <div class="se-results" aria-live="polite"><p class="se-muted">This section connects in the next build step.</p></div>
+      </section>
+    </div>
+
+    <footer class="se-foot">
+      <form class="se-input" data-se-form>
+        <label for="se-input" class="se-visually-hidden">{{ 'chat.input_placeholder' | t }}</label>
+        <input id="se-input" name="q" type="text" autocomplete="off" maxlength="300" placeholder="{{ 'chat.input_placeholder' | t }}">
+        <button type="submit" aria-label="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 20.5 21 12 3 3.5v6.6L15 12 3 13.9z"/></svg>
+        </button>
+      </form>
+      <p class="se-ai-notice">{{ 'chat.ai_notice' | t }} <a href="https://www.drinkaware.co.uk" target="_blank" rel="noopener">drinkaware.co.uk</a></p>
+    </footer>
+  </aside>
+</div>
+
+{% schema %}
+{
+  "name": "Whisky assistant",
+  "target": "body",
+  "stylesheet": "se-chat.css",
+  "javascript": "se-chat.js",
+  "settings": [
+    { "type": "color", "id": "accent", "label": "Accent colour", "default": "#7a4a1d" },
+    { "type": "color", "id": "accent_ink", "label": "Text on accent", "default": "#ffffff" },
+    { "type": "text", "id": "launcher_label", "label": "Launcher label", "info": "Leave empty for 'Ask our whisky expert'" }
+  ]
+}
+{% endschema %}

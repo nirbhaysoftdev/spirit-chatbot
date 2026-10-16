@@ -1,0 +1,348 @@
+// Spirits Embassy Assistant — data model
+// Postgres 16 + pgvector. One database is the single source of truth for the brain and the chat.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+  engineType      = "client"
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// ───────────── Shopify auth (from the template) ─────────────
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+// ───────────── Store + sync bookkeeping ─────────────
+
+model Shop {
+  domain           String    @id // e.g. the-spirits-embassy.myshopify.com
+  name             String?
+  currency         String?
+  ianaTimezone     String?
+  installedAt      DateTime  @default(now())
+  uninstalledAt    DateTime?
+  pixelId          String? // Shopify web pixel id, null = tracking OFF
+  trackingEnabled  Boolean   @default(false)
+  lastFullSyncAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+/// One row per bulk backfill run (products, customers, orders).
+model SyncJob {
+  id              String    @id @default(cuid())
+  shop            String
+  resource        String // products | customers | orders
+  bulkOperationId String?   @unique
+  status          String // RUNNING | COMPLETED | FAILED
+  objectCount     Int       @default(0)
+  error           String?
+  startedAt       DateTime  @default(now())
+  finishedAt      DateTime?
+
+  @@index([shop, resource, startedAt])
+}
+
+/// Every webhook id we have processed: makes handlers idempotent (Shopify may deliver twice).
+model WebhookReceipt {
+  webhookId  String   @id
+  shop       String
+  topic      String
+  receivedAt DateTime @default(now())
+
+  @@index([receivedAt])
+}
+
+// ───────────── Catalogue ─────────────
+
+model Product {
+  id          String    @id // gid://shopify/Product/123
+  shop        String
+  handle      String
+  title       String
+  vendor      String?
+  productType String?
+  status      String? // ACTIVE | DRAFT | ARCHIVED
+  tags        String[]
+  description String? // plain text, HTML stripped
+  imageUrl    String?
+  publishedAt DateTime?
+  createdAt   DateTime?
+  updatedAt   DateTime?
+  deletedAt   DateTime?
+
+  // Structured whisky data. Source order: the store's own custom.* metafields,
+  // then tags, then text rules; the AI enrichment step (phase 2) fills what is still empty.
+  region         String?
+  style          String? // single malt, blended malt, bourbon, gin...
+  distillery     String?
+  ageYears       Int?
+  noAgeStatement Boolean   @default(false)
+  abv            Decimal?  @db.Decimal(4, 1)
+  volumeMl       Int?
+  sizeLabel      String? // custom.size: Regular Bottle, Quarter Bottle, Miniature...
+  caskTypes      String[]
+  flavours       String[] // custom.flavor + flavour tags: Peaty Smokey, Dried Fruits Sherry...
+  peated         Boolean?
+  outturn        Int? // bottles released
+  vintage        Int?
+  singleCask     Boolean?
+  limitedEdition Boolean?
+  exclusive      Boolean? // custom.exclusive_to_spirit_embassy
+  tastingNotes   String? // custom.tasting_notes
+  fbtProductIds  String[] // custom.fbt: the team's own "frequently bought together"
+  upsellIds      String[] // custom.product_upsell
+  sources        Json? // which source filled each field: metafield | tag | text | ai
+  /// 12-dim taste vector: smoke, medicinal, sherry, fresh_fruit, tropical, floral, honey, spice, oak, maritime, sweetness, body
+  tasteVector Float[]
+  enrichment  Json? // raw enrichment output + confidence per field
+  enrichedAt  DateTime?
+  embedding   Unsupported("vector(1024)")?
+
+  variants  Variant[]
+  orderLines OrderLine[]
+
+  @@index([shop, status])
+  @@index([shop, vendor])
+  @@index([shop, region])
+}
+
+model Variant {
+  id                String   @id // gid://shopify/ProductVariant/123
+  productId         String
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shop              String
+  title             String?
+  sku               String?
+  price             Decimal  @db.Decimal(12, 2)
+  compareAtPrice    Decimal? @db.Decimal(12, 2)
+  inventoryItemId   String?
+  inventoryQuantity Int?
+  availableForSale  Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+
+  @@index([shop, inventoryItemId])
+}
+
+model Collection {
+  id        String    @id // gid://shopify/Collection/123
+  shop      String
+  handle    String
+  title     String
+  updatedAt DateTime?
+  deletedAt DateTime?
+}
+
+// ───────────── Customers + orders ─────────────
+
+model Customer {
+  id               String    @id // gid://shopify/Customer/123
+  shop             String
+  email            String? // lower-cased
+  firstName        String?
+  lastName         String?
+  countryCode      String?
+  tags             String[]
+  numberOfOrders   Int       @default(0)
+  amountSpent      Decimal   @default(0) @db.Decimal(12, 2)
+  marketingConsent String? // SUBSCRIBED | NOT_SUBSCRIBED | ...
+  createdAt        DateTime?
+  updatedAt        DateTime?
+  redactedAt       DateTime?
+
+  // Profile computed by the brain
+  tasteVector      Float[]
+  priceBandLow     Decimal?  @db.Decimal(12, 2)
+  priceBandHigh    Decimal?  @db.Decimal(12, 2)
+  profileUpdatedAt DateTime?
+
+  orders Order[]
+
+  @@index([shop, email])
+}
+
+model Order {
+  id                String      @id // gid://shopify/Order/123
+  shop              String
+  name              String // #1001
+  customerId        String?
+  customer          Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  email             String?
+  currency          String?
+  totalPrice        Decimal     @db.Decimal(12, 2)
+  financialStatus   String?
+  fulfillmentStatus String?
+  cancelledAt       DateTime?
+  shipCountryCode   String?
+  shipProvinceCode  String?
+  processedAt       DateTime?
+  createdAt         DateTime?
+  updatedAt         DateTime?
+  // Attribution to the chat (from hidden cart attribute / line properties)
+  chatSessionId     String?
+  attribution       String? // direct | assisted | null
+
+  lines OrderLine[]
+
+  @@index([shop, customerId])
+  @@index([shop, processedAt])
+}
+
+model OrderLine {
+  id        String   @id // gid://shopify/LineItem/123
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variantId String?
+  title     String
+  quantity  Int
+  price     Decimal  @db.Decimal(12, 2)
+  recReason String? // _rec line property: which chip/rule/reason placed it
+
+  @@index([productId])
+}
+
+// ───────────── Behaviour + identity ─────────────
+
+/// Storefront behaviour from the Web Pixel and chat events.
+model Event {
+  id         String   @id // pixel event id (dedupes retries)
+  shop       String
+  clientId   String // anonymous browser id from the pixel
+  customerId String?
+  name       String // product_viewed, search_submitted, chat_opened...
+  productId  String?
+  variantId  String?
+  query      String? // search term
+  url        String?
+  data       Json?
+  occurredAt DateTime
+  receivedAt DateTime @default(now())
+
+  @@index([shop, clientId, occurredAt])
+  @@index([shop, customerId, occurredAt])
+  @@index([shop, name, occurredAt])
+  @@index([shop, productId, occurredAt])
+}
+
+/// Links an anonymous browser to a known customer (login, checkout, verified email in chat).
+model IdentityLink {
+  shop       String
+  clientId   String
+  customerId String
+  source     String // checkout | login | chat_email_code
+  linkedAt   DateTime @default(now())
+
+  @@id([shop, clientId, customerId])
+  @@index([shop, customerId])
+}
+
+// ───────────── Chat ─────────────
+
+model ChatSession {
+  id         String    @id @default(cuid())
+  shop       String
+  clientId   String
+  customerId String?
+  country    String?
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  messages   Json      @default("[]")
+  tokensIn   Int       @default(0)
+  tokensOut  Int       @default(0)
+
+  @@index([shop, startedAt])
+}
+
+// ───────────── Merchant controls ─────────────
+
+/// Pins, boosts, buries, blocks and campaigns. Applied AFTER compliance, BEFORE slot mixing.
+model Rule {
+  id         String    @id @default(cuid())
+  shop       String
+  name       String
+  action     String // PIN | BOOST | BURY | BLOCK
+  targetType String // PRODUCT | VENDOR | TAG | COLLECTION
+  targetId   String
+  value      Float? // boost multiplier, or pin slot
+  scope      Json? // { chip?: string, segment?: string, countries?: string[] }
+  priority   Int       @default(0)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  active     Boolean   @default(true)
+  createdBy  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([shop, active])
+}
+
+/// Home-menu buttons and Explore Liquor chips, editable by the team.
+model MenuItem {
+  id        String    @id @default(cuid())
+  shop      String
+  kind      String // HOME_BUTTON | EXPLORE_CHIP
+  key       String // track_order, best_deals...
+  label     String
+  source    String // ALGORITHM | COLLECTION | MANUAL | MIX
+  config    Json? // algorithm name, collection id, product ids, mix ratio
+  position  Int       @default(0)
+  visible   Boolean   @default(true)
+  countries String[]
+  startsAt  DateTime?
+  endsAt    DateTime?
+  updatedAt DateTime  @updatedAt
+
+  @@unique([shop, kind, key])
+}
+
+/// Per-destination legal rules. Hard limits that admin rules can never override.
+model Jurisdiction {
+  shop              String
+  code              String // GB, DE, FR, US-CA ...
+  name              String
+  shippingEnabled   Boolean  @default(false)
+  minimumAge        Int      @default(18)
+  dutyMode          String   @default("NONE") // NONE | DDP_PREPAID | DAP_ON_DELIVERY
+  licenceStatus     String   @default("NOT_REQUIRED") // NOT_REQUIRED | HELD | MISSING
+  notes             String?
+  updatedAt         DateTime @updatedAt
+
+  @@id([shop, code])
+}
+
+/// Every recommendation/discount/checkout the compliance layer blocked, with the reason.
+model ComplianceLog {
+  id        String   @id @default(cuid())
+  shop      String
+  rule      String // MUP_FLOOR | MULTIBUY | LICENSED_HOURS | SHIP_BLOCKED | AGE ...
+  subject   String // product id, discount code, chat session id
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  @@index([shop, createdAt])
+}

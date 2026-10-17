@@ -92,11 +92,25 @@ products from the store; the sync tests include the live "Monkey Shoulder Smokey
 - The `/api/events` endpoint is public by design (the pixel calls it). It accepts events only for a
   shop with tracking on, validates names and ids, caps body size and rate-limits per IP.
 
+## Phase 2: the brain (shipped)
+
+| Part | Where | What it does |
+| --- | --- | --- |
+| Compliance layer | `app/lib/brain/compliance.ts` | Hard limits run FIRST on every pick: Scottish MUP floor (65p per unit), no multibuy, 10:00–22:00 payment window, shipping and age per country. Blocks are logged |
+| Candidate generators | `app/lib/brain/candidates.server.ts` | Taste match (12-dim cosine), store's own FBT/upsell links, co-buy from past orders, trending (48h events), rare finds, restock for the customer, bestsellers, new arrivals, deals (72h stable price), top on-site searches |
+| Scoring + rules + MMR | `app/lib/brain/score.ts` | Final score = source + taste + price fit + quality + novelty. Merchant rules (PIN/BOOST/BURY/BLOCK) scoped by chip, country, segment and dates. MMR diversity so the list isn't 5 near-identical bottles |
+| Entry point | `app/lib/brain/recommend.server.ts` | One `recommend(db, { chip, customerId, countryCode, ... })` call per chip. Loads context, picks the pipeline, filters, scores, applies rules, diversifies |
+| Chip API | `app/routes/api.chips.tsx` | Public endpoint the storefront panel calls. Returns UI-ready items with reason codes and the "why" line, with live prices |
+| Chat panel | `extensions/se-chat/` | Chips now show real product cards (title, vendor · region · style, price with was-price, "why", pin badge). Clicks are tracked |
+
+### How a recommendation is built, in order
+1. **Compliance** removes anything out of stock, below MUP, not shippable to the country, or deleted.
+2. **Score** = source weight × its raw rank + taste similarity + price fit + quality + novelty.
+3. **Rules** block, pin, boost or bury — scoped by chip, country, segment and dates.
+4. **Diversity (MMR)** picks the final list so smoky and sherried styles are mixed.
+5. The checkout gate (`LICENSED_HOURS`) is reported separately so the chat can tell the shopper when to come back.
+
 ## Next phases
 
-2. **Brain v1:** candidate generators (taste, bought-together, the team's own FBT links, trending,
-   rarity, restock), scoring, merchant rules (pin/boost/bury/block), compliance layer
-   (Scottish minimum unit pricing, no multibuy, licensed payment hours, shipping and age per country).
-3. **Chat:** chips and buttons call the brain; typed questions go to Claude (Haiku first, Sonnet for
-   advice) with tools only; product cards with live prices; order tracking with verification.
+3. **Chat (free-text):** typed questions go to Claude (Haiku first, Sonnet for advice) with the brain's tools; order tracking with login or email code; human handoff.
 4. **Measure:** chat funnel, revenue per chip and rule, 10% holdout A/B test.

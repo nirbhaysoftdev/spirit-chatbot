@@ -9,6 +9,7 @@
   data-customer="{% if customer %}{{ customer.id }}{% endif %}"
   data-country="{{ localization.country.iso_code }}"
   data-currency="{{ cart.currency.iso_code }}"
+  data-app-url="{{ block.settings.app_url }}"
   style="--se-accent: {{ block.settings.accent }}; --se-accent-ink: {{ block.settings.accent_ink }};"
 >
   <button type="button" class="se-launcher" aria-haspopup="dialog" aria-controls="se-chat-panel" aria-expanded="false">
@@ -89,7 +90,8 @@
   "settings": [
     { "type": "color", "id": "accent", "label": "Accent colour", "default": "#7a4a1d" },
     { "type": "color", "id": "accent_ink", "label": "Text on accent", "default": "#ffffff" },
-    { "type": "text", "id": "launcher_label", "label": "Launcher label", "info": "Leave empty for 'Ask our whisky expert'" }
+    { "type": "text", "id": "launcher_label", "label": "Launcher label", "info": "Leave empty for 'Ask our whisky expert'" },
+    { "type": "url", "id": "app_url", "label": "App API URL", "info": "The HTTPS URL where the Spirits Embassy app runs. Set this once per environment." }
   ]
 }
 {% endschema %}

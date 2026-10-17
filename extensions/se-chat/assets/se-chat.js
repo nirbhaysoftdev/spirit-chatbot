@@ -60,16 +60,65 @@
     });
   }
 
+  const chipsApi = (root.dataset.appUrl || "").replace(/\/$/, "") + "/api/chips";
+  const shop = root.dataset.shop;
+  const country = root.dataset.country || "";
+  const customer = root.dataset.customer || "";
+  const currency = root.dataset.currency || "GBP";
+  const money = new Intl.NumberFormat("en-GB", { style: "currency", currency });
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const results = root.querySelector("[data-se-results]");
+
+  async function loadChip(key, label) {
+    results.setAttribute("aria-busy", "true");
+    results.innerHTML = '<p class="se-muted">Finding good picks…</p>';
+    const url = `${chipsApi}?shop=${encodeURIComponent(shop)}&chip=${encodeURIComponent(key)}&country=${encodeURIComponent(country)}&customer=${encodeURIComponent(customer)}&n=6`;
+    try {
+      const res = await fetch(url, { credentials: "omit" });
+      if (!res.ok) throw new Error(res.status + "");
+      const data = await res.json();
+      results.setAttribute("aria-busy", "false");
+      if (!data.items?.length) {
+        results.innerHTML = '<p class="se-muted">Nothing to show for “' + esc(label) + '” right now.</p>';
+        return;
+      }
+      results.innerHTML = data.items.map((it) => {
+        const pid = String(it.id).split("/").pop();
+        const url = "/products/handle?variant=" + pid;
+        const price = money.format(it.price || 0);
+        const was = it.wasPrice ? '<span class="se-was">' + money.format(it.wasPrice) + "</span>" : "";
+        const why = esc(it.reasonLine || "");
+        const pin = it.pinned ? '<span class="se-pin">Pick of the week</span>' : "";
+        return (
+          '<article class="se-card">' +
+          '<a class="se-card-link" href="' + esc(url) + '" data-se-pid="' + esc(it.id) + '" data-se-reason="' + esc(it.reason) + '">' +
+          '<h3>' + esc(it.title) + '</h3>' +
+          '<p class="se-meta">' + esc([it.vendor, it.region, it.style].filter(Boolean).join(" · ")) + '</p>' +
+          '<p class="se-price">' + price + ' ' + was + '</p>' +
+          '<p class="se-why">' + why + " " + pin + '</p>' +
+          '</a></article>'
+        );
+      }).join("");
+      for (const link of results.querySelectorAll(".se-card-link")) {
+        link.addEventListener("click", () => {
+          track("product_clicked", { productId: link.dataset.sePid, reason: link.dataset.seReason, chip: key });
+        });
+      }
+      // Fire a product_shown event per card for click-through analysis.
+      for (const it of data.items) {
+        track("product_shown", { productId: it.id, reason: it.reason, chip: key });
+      }
+    } catch (e) {
+      results.setAttribute("aria-busy", "false");
+      results.innerHTML = '<p class="se-muted">Couldn’t load picks. Try again in a moment.</p>';
+    }
+  }
+
   for (const chip of root.querySelectorAll(".se-chip")) {
     chip.addEventListener("click", () => {
       for (const c of root.querySelectorAll(".se-chip")) c.setAttribute("aria-pressed", c === chip ? "true" : "false");
       track("chip_clicked", { key: chip.dataset.seKey });
-      const results = root.querySelector("[data-se-results]");
-      results.innerHTML = "";
-      const p = document.createElement("p");
-      p.className = "se-muted";
-      p.textContent = "Recommendations for “" + chip.textContent.trim() + "” connect in the next build step.";
-      results.appendChild(p);
+      loadChip(chip.dataset.seKey, chip.textContent.trim());
     });
   }
 

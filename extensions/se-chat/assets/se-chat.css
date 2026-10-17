@@ -68,7 +68,18 @@
   color: var(--se-ink); font: 500 14px/1.2 inherit;
 }
 .se-chip[aria-pressed="true"] { background: var(--se-accent); color: var(--se-accent-ink); border-color: var(--se-accent); }
-.se-results { margin-top: 16px; }
+.se-results { margin-top: 16px; display: grid; gap: 10px; }
+.se-results[aria-busy="true"] { opacity: 0.6; }
+
+.se-card { background: var(--se-surface); border: 1px solid var(--se-line); border-radius: var(--se-radius); overflow: hidden; }
+.se-card-link { display: block; padding: 12px 14px; text-decoration: none; color: inherit; }
+.se-card:hover { border-color: var(--se-accent); }
+.se-card h3 { margin: 0 0 2px; font-size: 15px; font-weight: 600; line-height: 1.3; }
+.se-card .se-meta { margin: 0; color: var(--se-muted); font-size: 12px; }
+.se-card .se-price { margin: 6px 0 2px; font-size: 15px; font-weight: 600; }
+.se-card .se-was { margin-left: 6px; color: var(--se-muted); text-decoration: line-through; font-weight: 400; font-size: 13px; }
+.se-card .se-why { margin: 0; color: var(--se-muted); font-size: 12.5px; }
+.se-pin { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--se-accent); color: var(--se-accent-ink); font-size: 11px; font-weight: 600; }
 
 .se-foot { padding: 12px 16px 14px; background: var(--se-surface); border-top: 1px solid var(--se-line); }
 .se-input { display: flex; gap: 8px; }

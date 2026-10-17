@@ -146,8 +146,19 @@ export default function Index() {
         <s-ordered-list>
           <s-list-item>Online Store › Themes › duplicate the live theme (do not publish the copy).</s-list-item>
           <s-list-item>Customize the copy › App embeds › switch on “Whisky assistant”.</s-list-item>
+          <s-list-item>Set the App API URL in the embed settings to this app’s HTTPS URL.</s-list-item>
           <s-list-item>Use the copy’s Preview link. Shoppers on the live theme never see it.</s-list-item>
         </s-ordered-list>
+      </s-section>
+
+      <s-section slot="aside" heading="Recommendations are live">
+        <s-paragraph>
+          Chat chips (Best deals, Matches my taste, Rarest of rare, Trending now, Most searched,
+          New arrivals, Most demanded, Best for me) call the brain and show real products.
+          Pins, boosts, blocks and burys are honoured, and Scottish rules (MUP floor,
+          no multibuy, no shipping to disabled countries, 10:00–22:00 payment window) are
+          enforced before anything is shown.
+        </s-paragraph>
       </s-section>
     </s-page>
   );

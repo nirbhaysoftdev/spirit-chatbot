@@ -36,6 +36,20 @@ orders, customers or discounts.
 
 ## Run it
 
+**Preview on the live store, hidden from shoppers:** see [docs/PREVIEW.md](docs/PREVIEW.md) for
+a one-command setup. On macOS/Linux/WSL:
+
+```bash
+bash scripts/preview.sh
+```
+
+The script starts Postgres, runs migrations, seeds defaults, then opens the Shopify CLI tunnel
+and prints the install link. You install the app on the store, duplicate the live theme (do not
+publish the copy), enable the embed on the copy and preview it — shoppers on the published theme
+never see it.
+
+**Manual run:**
+
 ```bash
 cp .env.example .env              # then fill in DATABASE_URL
 docker compose up -d              # local Postgres 16 + pgvector
